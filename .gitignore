@@ -216,3 +216,128 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# =============================================================================
+# Django (project-specific additions)
+# =============================================================================
+/media/
+/staticfiles/
+/static_collected/
+
+# Django migrations — kept in VCS by default; uncomment if intentionally excluding
+# */migrations/*.py
+# !*/migrations/__init__.py
+
+# Allow committing a template env file
+!.env.example
+
+# =============================================================================
+# Database / PostGIS local data
+# =============================================================================
+*.sql.gz
+*.dump
+*.bak
+pgdata/
+postgres-data/
+
+# =============================================================================
+# Docker
+# =============================================================================
+docker-compose.override.yml
+.docker/
+
+# =============================================================================
+# Node / Frontend (Leaflet demo, future tooling)
+# =============================================================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+.parcel-cache/
+.next/
+.nuxt/
+dist-frontend/
+
+# =============================================================================
+# iOS / SwiftUI (stretch)
+# =============================================================================
+# Xcode
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+xcuserdata/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+Packages/
+Package.pins
+Package.resolved
+.swiftpm/
+
+# CocoaPods (if ever used)
+Pods/
+
+# Carthage (if ever used)
+Carthage/Build/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# =============================================================================
+# Editors / IDEs
+# =============================================================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# =============================================================================
+# OS
+# =============================================================================
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# =============================================================================
+# Project-specific
+# =============================================================================
+# Cached locker dataset / API responses
+data/raw/
+data/cache/
+*.geojson.cache
+
+# OpenRouteService response cache
+.ors_cache/
+
+# Local notes that shouldn't ship
+NOTES.local.md
+TODO.local.md
+
+# Working docs (SPEC, PLAN) — local only, deleted at end of project
+/docs/
