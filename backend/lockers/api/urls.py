@@ -1,11 +1,8 @@
 from django.urls import path
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
-class HealthView(APIView):
-    def get(self, request):
-        return Response({"status": "ok"})
+from .views import HealthView, RecommendView, LockerDetailView
 
 urlpatterns = [
     path("health", HealthView.as_view(), name="health"),
+    path("recommend", RecommendView.as_view(), name="recommend"),
+    path("lockers/<str:code>", LockerDetailView.as_view(), name="locker-detail"),
 ]
