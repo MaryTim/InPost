@@ -1,18 +1,24 @@
 import logging
+
 from .hours import parse_hours
 
 logger = logging.getLogger(__name__)
 
-def parse_locker(raw: dict) -> dict | None:
-    try:
-        if raw.get("country") != "PL":
-            return None
-        if raw.get("status") != "Operating":
-            return None
 
-        types = raw.get("type") or []
-        if "parcel_locker" not in types:
-            return None
+def parse_locker(raw: dict) -> dict | None:
+    # Cheap rejection checks — these can't raise on well-formed dicts.
+    if raw.get("country") != "PL":
+        return None
+    if raw.get("status") != "Operating":
+        return None
+
+    types = raw.get("type") or []
+    if "parcel_locker" not in types:
+        return None
+
+    # The actual extraction is wrapped in a narrow except so that one weird
+    # record (missing nested keys, unexpected types) doesn't kill ingestion.
+    try:
         loc = raw.get("location") or {}
         lat, lng = loc.get("latitude"), loc.get("longitude")
         if lat is None or lng is None:
@@ -36,6 +42,6 @@ def parse_locker(raw: dict) -> dict | None:
             "physical_type": raw.get("physical_type", "") or "",
             "easy_access": bool(raw.get("easy_access_zone", False)),
         }
-    except Exception as e:
+    except (KeyError, TypeError, ValueError) as e:
         logger.warning("Failed to parse record %s: %s", raw.get("name"), e)
         return None

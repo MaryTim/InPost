@@ -68,6 +68,17 @@
     let fallbackLayers = [];
     let currentResults = [];
 
+    // Pin color + label thresholds based on fallback robustness (0-1).
+    // ≥0.8 = robust, 0.4-0.8 = mixed, <0.4 = fragile.
+    function fbColor(fb) {
+      return fb >= 0.8 ? "#10b981" : fb >= 0.4 ? "#f59e0b" : "#ef4444";
+    }
+    function fbLabel(fb) {
+      return fb >= 0.8 ? "Robust backup options"
+           : fb >= 0.4 ? "Some backup options match"
+           : "Fragile backup options";
+    }
+
     function updateAnchorInfo() {
       const { lat, lng } = anchor.getLatLng();
       document.getElementById("anchor-info").textContent =
@@ -126,7 +137,7 @@
 
       results.forEach((r, idx) => {
         const fb = r.score_breakdown.fallback_robustness;
-        const color = fb >= 0.8 ? "#10b981" : fb >= 0.4 ? "#f59e0b" : "#ef4444";
+        const color = fbColor(fb);
         const marker = L.circleMarker([r.lat, r.lng], {
           radius: 9,
           color: color,
@@ -134,10 +145,7 @@
           fillOpacity: 0.85,
           weight: 2,
         }).addTo(map);
-        const fbLabel = fb >= 0.8 ? "Robust backup options"
-                      : fb >= 0.4 ? "Some backup options match"
-                      : "Fragile backup options";
-        marker.bindPopup(`<b>${r.code}</b><br>${r.address}<br>${r.distance_m} m<br>${fbLabel}`);
+        marker.bindPopup(`<b>${r.code}</b><br>${r.address}<br>${r.distance_m} m<br>${fbLabel(fb)}`);
         resultLayers.push(marker);
 
         const div = document.createElement("div");
@@ -177,8 +185,7 @@
 
       // Reset all result pins to default size, enlarge the selected one
       resultLayers.forEach((layer, i) => {
-        const fb = currentResults[i].score_breakdown.fallback_robustness;
-        const c = fb >= 0.8 ? "#10b981" : fb >= 0.4 ? "#f59e0b" : "#ef4444";
+        const c = fbColor(currentResults[i].score_breakdown.fallback_robustness);
         if (i === idx) {
           layer.setStyle({ radius: 14, weight: 4, color: "#000", fillColor: c, fillOpacity: 0.9 });
         } else {

@@ -34,12 +34,10 @@ INSTALLED_APPS = [
     "django.contrib.gis",
     "rest_framework",
     "drf_spectacular",
-    "corsheaders",
     "lockers",
 ]
 
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -94,8 +92,6 @@ USE_TZ = True
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-CORS_ALLOW_ALL_ORIGINS = True
-
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_AUTHENTICATION_CLASSES": [],
@@ -105,5 +101,5 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {
     "TITLE": "InPost Sender Companion API",
     "VERSION": "0.1.0",
-    "DESCRIPTION": "Backend for the InPost Sender Companion iOS app.",
+    "DESCRIPTION": "Backend for the InPost Sender Companion web demo",
 }
