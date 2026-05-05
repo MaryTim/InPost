@@ -23,7 +23,7 @@ The core question the tool answers: *"If this locker is full when I get there, w
 
 ### The problem
 
-When you have a parcel to send, you walk to an InPost locker and try to drop it off. Several things can go wrong, and none of them are visible to you in advance:
+When you have a parcel to send, you walk to an InPost locker and try to drop it off. Several things can go wrong and none of them are visible to you in advance:
 
 - It accepts sends but is closed when you arrive.
 - It's full when you arrive, so you have to walk to whichever alternative is nearest - which may not match what you needed in the first place (e.g., you needed 24/7 access; the reroute closes at 6 PM).
@@ -42,19 +42,17 @@ A user opens the demo, drags a pin to their location, ticks the filters that mat
 4. Scores each candidate using a 50/50 split of `proximity` and `fallback robustness`.
 5. Returns the top 5 ranked best-first.
 
-The frontend visualizes this clearly: clicking a result on the side panel highlights its fallback cluster on the map. Solid green pins are alternatives that match all the user's filters; hollow gray pins are alternatives that don't. The contrast between a "robust" locker (all green fallbacks) and a "fragile" locker (mostly hollow) is immediately visible — that's the demo's hero moment.
-
-### Screenshots & demo
+### Demo
 
 The demo shows the main flow: selecting filters, ranking nearby lockers, and comparing robust versus fragile fallback clusters.
 
+
+https://github.com/user-attachments/assets/e7ab21f6-d3ff-4e98-bdc6-0b81008d5aa9
+
+
 ### The data discoveries
 
-A non-trivial portion of this project's value came from carefully reading the API. Three discoveries shaped the design:
-
-**The InPost API exposes both free-text and structured opening hours.** The `opening_hours` field is a Polish-language free-text string (`"PN-PT 10-18 SB 10-14"`), but `operating_hours_extended.customer` is a structured object with day-keyed minute-since-midnight ranges. Switching from a regex parser of the free-text field to a 30-line dict-walker of the structured field improved coverage from 99.92% to 100% across non-24/7 lockers, and dropped ~70 lines of regex code.
-
-**Compartment-size data is universally `NO_DATA`.** Every record returns `locker_availability.details.{A, B, C} = "NO_DATA"`. The API exposes the structure but never populates the values. Any `parcel_size` filter would be filter theater; the project drops it explicitly.
+**Compartment-size data is universally `NO_DATA`.** Every record returns `locker_availability.details.{A, B, C} = "NO_DATA"`. The API exposes the structure but never populates the values.
 
 **Most "interesting" filter dimensions are universal.** Live audit against ~32,000 Polish lockers showed:
 
@@ -91,17 +89,17 @@ Two key architectural choices:
 
 **Neighbor sets precomputed via SQL spatial self-join.** For each locker, the lockers within 300m are computed once after ingestion using a single PostGIS `UPDATE ... FROM ...` statement. The bounding-box `&&` operator uses the gist spatial index to filter candidate pairs, then `ST_Distance(...::geography)` does the precise meter-distance check. The full 31,712-locker preprocessing completes in ~2 seconds.
 
-### Filters tested and deliberately dropped
+### Filters tested and dropped
 
 The audit story in one table:
 
 | Filter | Live data | Status | Why |
 |---|---|---|---|
-| `require_24_7` | 88.4% true | **Kept** | Narrows ~12% of lockers, real signal |
+| `require_24_7` | 88.4% true | **Kept** | Narrows ~12% of lockers |
 | `require_easy_access` | 90.4% true | **Kept** | Narrows ~10% of lockers |
 | `open_at(day, time)` | varies | **Kept** | Useful for the 12% non-24/7 lockers |
-| `accepts_returns` | 100% true | Dropped | Filter theater — every locker has it |
-| `accepts_sends` | 100% true | Dropped | Filter theater |
+| `accepts_returns` | 100% true | Dropped | Every locker has it |
+| `accepts_sends` | 100% true | Dropped | Every locker has it|
 | `payment_card` | 0% true | Dropped | InPost uses app-based payment, not card terminals |
 | `parcel_size` | unavailable | Dropped | API returns `NO_DATA` for every locker |
 
@@ -129,7 +127,7 @@ The dropped fields were also removed from the database schema and the API respon
 | Map | **Leaflet 1.9** | Loaded from CDN; no build step; sufficient for the demo surface |
 | HTTP | **fetch()** (vanilla JS) | No frameworks needed for a single page |
 
-The frontend is a single HTML file served by Django at `/`. No webpack, no React, no TypeScript — by deliberate choice. The backend is the project's substance; the frontend's job is to make the backend's behavior visible.
+The frontend is a single HTML file served by Django at `/`. The backend is the project's substance; the frontend's job is to make the backend's behavior visible.
 
 ### Containerization
 
@@ -147,8 +145,6 @@ The frontend is a single HTML file served by Django at `/`. No webpack, no React
 - A web browser (any modern Chrome/Safari/Firefox).
 - Internet access on first run (to fetch the InPost dataset and pull Docker images).
 
-No Python, Node, or Postgres installation needed on the host — everything runs inside containers.
-
 ### Build & run
 
 ```bash
@@ -165,7 +161,7 @@ docker compose up -d
 # 4. Apply database migrations
 docker compose run --rm app python manage.py migrate
 
-# 5. Ingest the InPost dataset (~30 seconds, walks 68 API pages)
+# 5. Ingest the InPost dataset (~30-90 seconds, walks 68 API pages)
 docker compose run --rm app python manage.py refresh_lockers
 
 # 6. Precompute neighbor sets (~2 seconds, single PostGIS spatial self-join)
@@ -193,7 +189,7 @@ open http://localhost:8000/
 
 ## AI usage
 
-I used Claude Cowork and ChatGPT throughout the project, mostly as a sparring partner for product decisions, backend design, code review and documentation.
+I used Claude Cowork and ChatGPT throughout the project, mostly as a sparring partner for product decisions, backend design, code review and generation, documentation.
 
 Specifically, AI helped with:
 
@@ -210,8 +206,6 @@ All AI-generated suggestions were reviewed by me before being used. The core pro
 ## Anything else?
 
 ### Design tradeoffs
-
-The strongest part of this project is not only what it does, but what I deliberately chose not to build.
 
 I originally planned to build a native iOS app, since that is where I have the most experience. During implementation, I decided to prioritize the backend engine: data ingestion, spatial queries, fallback-neighbor computation, filter auditing, and the recommendation logic. The web frontend is intentionally simple and exists mainly to make the backend behavior visible.
 
