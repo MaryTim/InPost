@@ -44,9 +44,13 @@ A user opens the demo, drags a pin to their location, ticks the filters that mat
 
 The frontend visualizes this clearly: clicking a result on the side panel highlights its fallback cluster on the map. Solid green pins are alternatives that match all the user's filters; hollow gray pins are alternatives that don't. The contrast between a "robust" locker (all green fallbacks) and a "fragile" locker (mostly hollow) is immediately visible — that's the demo's hero moment.
 
-### Screenshots & demo
+### Demo
 
 The demo shows the main flow: selecting filters, ranking nearby lockers, and comparing robust versus fragile fallback clusters.
+
+
+https://github.com/user-attachments/assets/e7ab21f6-d3ff-4e98-bdc6-0b81008d5aa9
+
 
 ### The data discoveries
 
