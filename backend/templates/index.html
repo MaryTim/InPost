@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>InPost Sender Companion</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; display: flex; height: 100vh; }
+    #map { flex: 1; }
+    #sidebar { width: 380px; padding: 18px; overflow-y: auto; background: #f7f7f8; border-left: 1px solid #e0e0e3; }
+    h1 { font-size: 18px; margin: 0 0 4px 0; }
+    .lede { font-size: 13px; color: #555; margin: 0 0 16px 0; }
+    .filters { background: white; padding: 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #e0e0e3; }
+    .filters label { display: block; padding: 4px 0; font-size: 14px; cursor: pointer; }
+    .anchor-info { font-size: 12px; color: #555; margin: 8px 0; font-family: ui-monospace, monospace; }
+    button { padding: 10px 14px; background: #f08c00; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; width: 100%; font-size: 14px; }
+    button:hover:not(:disabled) { background: #d97706; }
+    button:disabled { background: #aaa; cursor: default; }
+    .result { background: white; border: 1px solid #e0e0e3; padding: 12px; margin-bottom: 10px; border-radius: 8px; cursor: pointer; transition: border-color 0.15s; }
+    .result:hover { border-color: #f08c00; }
+    .result.selected { border-color: #f08c00; box-shadow: 0 0 0 2px #f08c0033; }
+    .result h3 { margin: 0 0 2px 0; font-size: 14px; display: flex; justify-content: space-between; }
+    .result h3 .score { color: #f08c00; }
+    .meta { font-size: 12px; color: #666; }
+    .badges { font-size: 11px; color: #555; margin: 6px 0; }
+    .badge { display: inline-block; background: #eee; padding: 2px 6px; border-radius: 3px; margin-right: 4px; }
+    .score-bars { margin-top: 8px; }
+    .bar-label { font-size: 11px; color: #666; display: flex; justify-content: space-between; }
+    .bar { height: 6px; background: #eee; margin: 2px 0 6px 0; border-radius: 3px; overflow: hidden; }
+    .bar > div { height: 100%; background: #4ade80; transition: width 0.3s; }
+    .warning { background: #fef3c7; padding: 8px; margin-top: 6px; border-radius: 4px; font-size: 12px; }
+    .empty { color: #777; font-size: 13px; text-align: center; padding: 24px 0; }
+    .meta-footer { font-size: 11px; color: #999; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e3; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="sidebar">
+    <h1>📦 InPost Sender Companion</h1>
+    <p class="lede">Drag the pin to your location. Set filters. Find lockers whose backups also match your needs.</p>
+
+    <div class="filters">
+      <label><input type="checkbox" id="filter_24_7"> 24/7 only</label>
+      <label><input type="checkbox" id="filter_easy_access"> Easy access (accessibility)</label>
+    </div>
+
+    <button id="search-btn">Find lockers</button>
+    <div id="anchor-info" class="anchor-info"></div>
+    <div id="results"></div>
+    <div id="meta-footer" class="meta-footer"></div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const API_URL = "/api/recommend";
+    const WARSAW = [52.2297, 21.0122];
+
+    const map = L.map("map").setView(WARSAW, 16);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "© OpenStreetMap contributors",
+    }).addTo(map);
+
+    const anchor = L.marker(WARSAW, { draggable: true }).addTo(map);
+    anchor.bindPopup("Drag me to your starting point").openPopup();
+
+    let resultLayers = [];
+    let fallbackLayers = [];
+    let currentResults = [];
+
+    function updateAnchorInfo() {
+      const { lat, lng } = anchor.getLatLng();
+      document.getElementById("anchor-info").textContent =
+        `📍 Anchor: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    }
+    anchor.on("drag", updateAnchorInfo);
+    updateAnchorInfo();
+
+    document.getElementById("search-btn").addEventListener("click", search);
+
+    async function search() {
+      const btn = document.getElementById("search-btn");
+      btn.disabled = true;
+      btn.textContent = "Searching…";
+
+      const { lat, lng } = anchor.getLatLng();
+      const filters = {};
+      if (document.getElementById("filter_24_7").checked) filters.require_24_7 = true;
+      if (document.getElementById("filter_easy_access").checked) filters.require_easy_access = true;
+
+      try {
+        const resp = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user: { lat, lng }, filters, limit: 5 }),
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        renderResults(data.results || [], data.meta || {});
+      } catch (e) {
+        alert("Error: " + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Find lockers";
+      }
+    }
+
+    function clearLayers() {
+      resultLayers.forEach((l) => map.removeLayer(l));
+      fallbackLayers.forEach((l) => map.removeLayer(l));
+      resultLayers = [];
+      fallbackLayers = [];
+    }
+
+    function renderResults(results, meta) {
+      currentResults = results;
+      clearLayers();
+
+      const list = document.getElementById("results");
+      list.innerHTML = "";
+
+      if (results.length === 0) {
+        list.innerHTML = '<div class="empty">No lockers found. Widen your filters or move the anchor.</div>';
+        return;
+      }
+
+      results.forEach((r, idx) => {
+        const fb = r.score_breakdown.fallback_robustness;
+        const color = fb >= 0.8 ? "#10b981" : fb >= 0.4 ? "#f59e0b" : "#ef4444";
+        const marker = L.circleMarker([r.lat, r.lng], {
+          radius: 9,
+          color: color,
+          fillColor: color,
+          fillOpacity: 0.85,
+          weight: 2,
+        }).addTo(map);
+        const fbLabel = fb >= 0.8 ? "Robust backup options"
+                      : fb >= 0.4 ? "Some backup options match"
+                      : "Fragile backup options";
+        marker.bindPopup(`<b>${r.code}</b><br>${r.address}<br>${r.distance_m} m<br>${fbLabel}`);
+        resultLayers.push(marker);
+
+        const div = document.createElement("div");
+        div.className = "result";
+        div.innerHTML = `
+          <h3><span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-right:6px;vertical-align:middle"></span>#${idx + 1} ${r.code}</span><span class="score" style="color:${color}">${r.score}</span></h3>
+          <div class="meta">${r.address || "(no address)"} · ${r.distance_m} m</div>
+          <div class="badges">
+            <span class="badge">${r.is_24_7 ? "24/7" : "Hours"}</span>
+            <span class="badge">${r.location_type || "—"}</span>
+            ${r.easy_access ? '<span class="badge">Easy access</span>' : ""}
+          </div>
+          <div class="score-bars">
+            <div class="bar-label"><span>Distance</span><span>${r.distance_m}m</span></div>
+            <div class="bar"><div style="width:${r.score_breakdown.proximity * 100}%"></div></div>
+            <div class="bar-label"><span>Backup options</span><span>${Math.round(r.score_breakdown.fallback_robustness * 100)}%</span></div>
+            <div class="bar"><div style="width:${r.score_breakdown.fallback_robustness * 100}%"></div></div>
+          </div>
+          ${r.warnings.map((w) => `<div class="warning">⚠️ ${w}</div>`).join("")}
+        `;
+        div.addEventListener("click", () => selectResult(idx));
+        list.appendChild(div);
+      });
+
+      const refreshed = meta.dataset_refreshed_at
+        ? new Date(meta.dataset_refreshed_at).toLocaleString()
+        : "unknown";
+      document.getElementById("meta-footer").textContent = `Dataset last refreshed: ${refreshed}`;
+    }
+
+    function selectResult(idx) {
+      const r = currentResults[idx];
+
+      document.querySelectorAll(".result").forEach((el, i) => {
+        el.classList.toggle("selected", i === idx);
+      });
+
+      // Reset all result pins to default size, enlarge the selected one
+      resultLayers.forEach((layer, i) => {
+        const fb = currentResults[i].score_breakdown.fallback_robustness;
+        const c = fb >= 0.8 ? "#10b981" : fb >= 0.4 ? "#f59e0b" : "#ef4444";
+        if (i === idx) {
+          layer.setStyle({ radius: 14, weight: 4, color: "#000", fillColor: c, fillOpacity: 0.9 });
+        } else {
+          layer.setStyle({ radius: 9, weight: 2, color: c, fillColor: c, fillOpacity: 0.85 });
+        }
+      });
+
+      fallbackLayers.forEach((l) => map.removeLayer(l));
+      fallbackLayers = [];
+
+      r.fallbacks.forEach((f) => {
+        if (f.lat == null) return;
+        const color = f.matches_all_filters ? "#10b981" : "#9ca3af";
+        const m = L.circleMarker([f.lat, f.lng], {
+          radius: 7,
+          color: color,
+          fillColor: f.matches_all_filters ? color : "white",
+          fillOpacity: f.matches_all_filters ? 0.65 : 0.3,
+          weight: 2,
+          dashArray: f.matches_all_filters ? null : "3,3",
+        }).addTo(map);
+        m.bindPopup(
+          `<b>${f.code}</b><br>${f.distance_m} m from primary<br>` +
+          (f.matches_all_filters ? "✅ Matches all filters" : "❌ Does not match all filters")
+        );
+        fallbackLayers.push(m);
+      });
+
+      map.panTo([r.lat, r.lng]);
+    }
+  </script>
+</body>
+</html>

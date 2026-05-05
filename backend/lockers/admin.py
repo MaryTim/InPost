@@ -6,7 +6,7 @@ from .models import Locker
 
 @admin.register(Locker)
 class LockerAdmin(GISModelAdmin):
-    list_display = ("code", "city", "location_type", "physical_type", "is_24_7", "accepts_returns", "accepts_sends", "easy_access")
-    list_filter = ("is_24_7", "accepts_returns", "accepts_sends", "easy_access", "location_type", "physical_type")
+    list_display = ("code", "city", "location_type", "physical_type", "is_24_7", "easy_access")
+    list_filter = ("is_24_7", "easy_access", "location_type", "physical_type")
     search_fields = ("code", "address", "city")
     readonly_fields = ("last_seen_at",)

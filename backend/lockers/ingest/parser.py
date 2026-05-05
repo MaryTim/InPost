@@ -18,10 +18,6 @@ def parse_locker(raw: dict) -> dict | None:
         if lat is None or lng is None:
             return None
 
-        functions = set(raw.get("functions") or [])
-        accepts_sends = any(f.endswith("_send") for f in functions)
-        accepts_returns = any(f.endswith("_reverse_return_send") for f in functions)
-
         weekly, parsed_ok = parse_hours(raw.get("operating_hours_extended"))
 
         addr = raw.get("address") or {}
@@ -36,8 +32,6 @@ def parse_locker(raw: dict) -> dict | None:
             "weekly_hours": weekly,
             "weekly_hours_parsed": parsed_ok,
             "is_24_7": bool(raw.get("location_247", False)),
-            "accepts_returns": accepts_returns,
-            "accepts_sends": accepts_sends,
             "location_type": raw.get("location_type", "") or "",
             "physical_type": raw.get("physical_type", "") or "",
             "easy_access": bool(raw.get("easy_access_zone", False)),

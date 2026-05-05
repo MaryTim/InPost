@@ -12,8 +12,6 @@ class Locker(models.Model):
     weekly_hours_parsed = models.BooleanField(default=False)
 
     is_24_7 = models.BooleanField(default=False)
-    accepts_returns = models.BooleanField(default=False)
-    accepts_sends = models.BooleanField(default=False)
     easy_access = models.BooleanField(default=False)
 
     # "newfm", "next", "modular", "screenless"
